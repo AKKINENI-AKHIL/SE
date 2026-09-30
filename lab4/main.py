@@ -1,0 +1,44 @@
+import pygame
+
+from game.game_engine import GameEngine
+
+
+WIDTH, HEIGHT = 700, 600
+FPS = 60
+DARK_BLUE = (20, 25, 45)
+
+
+def main():
+    pygame.init()
+
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Fruit Slice - Pygame Version")
+    clock = pygame.time.Clock()
+
+    engine = GameEngine(WIDTH, HEIGHT)
+    running = True
+
+    while running:
+        screen.fill(DARK_BLUE)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            else:
+                engine.handle_event(event)
+
+        engine.handle_input()
+        engine.update()
+        engine.render(screen)
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+        if engine.exit_requested:
+            running = False
+
+    pygame.quit()
+
+
+if __name__ == "__main__":
+    main()
