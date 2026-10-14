@@ -9,11 +9,18 @@ ADMIN_PASSWORD = "garage-demo"
 service_records = {}
 
 
-def addService(vehicleNo, serviceType="General", history=[]):
-    cost = SERVICE_RATES.get(serviceType, 0)
-    entry = {"type": serviceType, "cost": cost, "date": str(date.today())}
-    service_records.setdefault(vehicleNo, []).append(entry)
-    history.append(vehicleNo)
+def add_service(vehicle_no, service_type="General", history=None):
+    if history is None:
+        history = []
+
+    cost = SERVICE_RATES.get(service_type, 0)
+    entry = {
+        "type": service_type,
+        "cost": cost,
+        "date": str(date.today()),
+    }
+    service_records.setdefault(vehicle_no, []).append(entry)
+    history.append(vehicle_no)
     return history
 
 
