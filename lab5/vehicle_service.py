@@ -1,15 +1,22 @@
+
 import hashlib
 import json
-import subprocess
+import shutil
 from datetime import date
+from pathlib import Path
 
-SERVICE_RATES = {"Oil Change": 1500, "Wheel Alignment": 800,
-                 "General": 2500,"Brake Check": 1200}
-ADMIN_PASSWORD = "garage-demo"
+SERVICE_RATES = {
+    "Oil Change": 1500,
+    "Wheel Alignment": 800,
+    "General": 2500,
+    "Brake Check": 1200,
+}
+
 service_records = {}
 
 
 def add_service(vehicle_no, service_type="General", history=None):
+    """Add a service booking and record the vehicle in history."""
     if history is None:
         history = []
 
@@ -24,64 +31,109 @@ def add_service(vehicle_no, service_type="General", history=None):
     return history
 
 
-def cancelService(vehicleNo, serviceType):
+def cancel_service(vehicle_no, service_type):
+    """Cancel matching service jobs for a vehicle."""
     try:
-        jobs = service_records[vehicleNo]
+        jobs = service_records[vehicle_no]
     except KeyError:
-        print("No records for", vehicleNo)
+        print("No records for", vehicle_no)
         return False
-    remaining = [job for job in jobs if job["type"] != serviceType]
-    service_records[vehicleNo] = remaining
+
+    remaining = [
+        job for job in jobs if job["type"] != service_type
+    ]
+    service_records[vehicle_no] = remaining
     return len(remaining) < len(jobs)
 
 
-def getTotalCost(vehicleNo):
-    totalCost = 0
-    for job in service_records.get(vehicleNo, []):
-        totalCost += job["cost"]
-    return totalCost
+def get_total_cost(vehicle_no):
+    """Calculate the total service cost for a vehicle."""
+    return sum(
+        job["cost"]
+        for job in service_records.get(vehicle_no, [])
+    )
 
 
-def jobCardId(vehicleNo):
-    return hashlib.md5(vehicleNo.encode()).hexdigest()[:8]
+def job_card_id(vehicle_no):
+    """Generate a short, deterministic job card identifier."""
+    return hashlib.sha256(
+        vehicle_no.encode("utf-8")
+    ).hexdigest()[:8]
 
 
-def busiestVehicle():
-    best=None
-    for vehicle, jobs in service_records.items():
-        if best is None or len(jobs) > len(service_records[best]):
-            best = vehicle
-    return best
+def busiest_vehicle():
+    """Return the vehicle with the most recorded service jobs."""
+    if not service_records:
+        return None
 
-def saveRecords(fileName="services.json"):
-    with open(fileName, "w") as f:
-        json.dump(service_records, f, indent=2)
-
-
-def loadRecords(fileName="services.json"):
-    with open(fileName, encoding="utf-8") as f:
-        return json.load(f)
+    return max(
+        service_records,
+        key=lambda vehicle: len(service_records[vehicle]),
+    )
 
 
-def backupRecords(folder):
-    # Helper kept for the lab: not called by the demo
-    subprocess.call("cp services.json " + folder, shell=True)
+def save_records(file_name="services.json"):
+    """Save all service records to a JSON file."""
+    with open(file_name, "w", encoding="utf-8") as file:
+        json.dump(service_records, file, indent=2)
+
+
+def load_records(file_name="services.json"):
+    """Load service records from a JSON file."""
+    with open(file_name, encoding="utf-8") as file:
+        return json.load(file)
+
+
+def backup_records(folder):
+    """Copy the service records file into a backup folder."""
+    source = Path("services.json")
+    destination = Path(folder)
+    destination.mkdir(parents=True, exist_ok=True)
+
+    if not source.is_file():
+        raise FileNotFoundError(
+            f"Service records file not found: {source}"
+        )
+
+    shutil.copy2(source, destination / source.name)
 
 
 def main():
-    addService("KA01AB1234", "Oil Change")
-    addService("KA01AB1234", "Wheel Alignment")
-    addService("KA05XY9876")
-    addService("KA03MN4455", "Brake Check")
-    cancelService("KA05XY9876", "Brake Check")
-    cancelService("KA09ZZ0001", "General")
-    cancelService("KA03MN4455", "Brake Check")
-    print("Total for KA01AB1234:", getTotalCost("KA01AB1234"))
-    print("Total for KA05XY9876:", getTotalCost("KA05XY9876"))
-    print("Job card for KA01AB1234:", jobCardId("KA01AB1234"))
-    saveRecords()
-    loaded = loadRecords()
-    print("Vehicles on file:", len(loaded), "| busiest vehicle:", busiestVehicle())
+    """Run a demonstration of the vehicle service system."""
+    service_records.clear()
+
+    add_service("KA01AB1234", "Oil Change")
+    add_service("KA01AB1234", "Wheel Alignment")
+    add_service("KA05XY9876")
+    add_service("KA03MN4455", "Brake Check")
+
+    cancel_service("KA05XY9876", "Brake Check")
+    cancel_service("KA09ZZ0001", "General")
+    cancel_service("KA03MN4455", "Brake Check")
+
+    print(
+        "Total for KA01AB1234:",
+        get_total_cost("KA01AB1234"),
+    )
+    print(
+        "Total for KA05XY9876:",
+        get_total_cost("KA05XY9876"),
+    )
+    print(
+        "Job card for KA01AB1234:",
+        job_card_id("KA01AB1234"),
+    )
+
+    save_records()
+    loaded_records = load_records()
+
+    print(
+        "Vehicles on file:",
+        len(loaded_records),
+        "| busiest vehicle:",
+        busiest_vehicle(),
+    )
 
 
-main()
+if __name__ == "__main__":
+    main()
